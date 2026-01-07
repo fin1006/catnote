@@ -163,6 +163,14 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
             decoration: const InputDecoration(labelText: '비용 (원)', border: OutlineInputBorder()),
           ),
         ];
+      case EntryType.weight:
+        return [
+          TextField(
+            controller: amountCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: '체중 (kg)', border: OutlineInputBorder()),
+          ),
+        ];
     }
   }
 
@@ -192,6 +200,9 @@ class _QuickEntrySheetState extends ConsumerState<QuickEntrySheet> {
       case EntryType.hospital:
         data['name'] = nameCtrl.text.trim();
         data['cost'] = int.tryParse(amountCtrl.text.trim()) ?? 0;
+        break;
+      case EntryType.weight:
+        data['kg'] = double.tryParse(amountCtrl.text.trim()) ?? 0.0;
         break;
     }
 

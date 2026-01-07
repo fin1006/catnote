@@ -30,7 +30,7 @@ final todaySummaryProvider = Provider<TodaySummary>((ref) {
   final entries = ref.watch(selectedCatEntriesProvider);
   final now = DateTime.now();
   final startOfDay = DateTime(now.year, now.month, now.day);
-  final today = entries.where((e) => e.at.isAfter(startOfDay)).toList();
+  final today = entries.where((e) => !e.at.isBefore(startOfDay)).toList();
 
   int foodG = 0;
   int waterMl = 0;
@@ -56,6 +56,7 @@ final todaySummaryProvider = Provider<TodaySummary>((ref) {
         break;
       case EntryType.snack:
       case EntryType.hospital:
+      case EntryType.weight:
         break;
     }
   }

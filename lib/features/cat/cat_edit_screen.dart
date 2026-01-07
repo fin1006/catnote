@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../providers/cats_provider.dart';
 import '../../providers/selected_cat_provider.dart';
@@ -19,6 +22,11 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
   final nameCtrl = TextEditingController();
   final sexCtrl = TextEditingController();
   final breedCtrl = TextEditingController();
+  final traitsCtrl = TextEditingController();
+
+  XFile? _pickedPhoto;
+
+  final _picker = ImagePicker();
 
   @override
   void initState() {
@@ -30,6 +38,7 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
         nameCtrl.text = cat.name;
         sexCtrl.text = cat.sex ?? '';
         breedCtrl.text = cat.breed ?? '';
+        traitsCtrl.text = cat.traits ?? '';
       }
     }
   }
@@ -39,7 +48,28 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
     nameCtrl.dispose();
     sexCtrl.dispose();
     breedCtrl.dispose();
+    traitsCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFromCamera() async {
+    final x = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (x != null) {
+      setState(() => _pickedPhoto = x);
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    final x = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (x != null) {
+      setState(() => _pickedPhoto = x);
+    }
   }
 
   @override
@@ -50,9 +80,14 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
         ? cats.where((c) => c.id == widget.catId).cast().firstOrNull
         : null;
 
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14), // ✅ 모서리 조금 더 둥글게
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isNew ? '반려묘 추가' : '프로필 편집'),
+        centerTitle: true,
         actions: [
           if (!widget.isNew && cat != null)
             IconButton(
@@ -94,36 +129,20 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: nameCtrl,
-            decoration: const InputDecoration(
-              labelText: '이름 (필수)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: sexCtrl,
-            decoration: const InputDecoration(
-              labelText: '성별 (선택)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: breedCtrl,
-            decoration: const InputDecoration(
-              labelText: '묘종 (선택)',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
+
+      // ✅ 저장 버튼 하단 고정 + 진한 연두색 배경/흰 글씨
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: SizedBox(
             width: double.infinity,
+            height: 54,
             child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF1B8A5A),
+                foregroundColor: Colors.white,
+              ),
               onPressed: () {
                 final name = nameCtrl.text.trim();
                 if (name.isEmpty) {
@@ -133,8 +152,15 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
                   return;
                 }
 
+                final traits = traitsCtrl.text.trim().isEmpty ? null : traitsCtrl.text.trim();
+                final photoPath = _pickedPhoto?.path;
+
                 if (widget.isNew) {
-                  ref.read(catsProvider.notifier).addNew(name);
+                  ref.read(catsProvider.notifier).addNew(
+                    name,
+                    photoPath: photoPath,
+                    traits: traits,
+                  );
 
                   // 새로 추가된 고양이를 선택
                   final newCats = ref.read(catsProvider);
@@ -147,6 +173,8 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
                     name: name,
                     sex: sexCtrl.text.trim().isEmpty ? null : sexCtrl.text.trim(),
                     breed: breedCtrl.text.trim().isEmpty ? null : breedCtrl.text.trim(),
+                    traits: traits,
+                    photoPath: photoPath ?? cat.photoPath,
                   );
                   ref.read(catsProvider.notifier).upsert(next);
 
@@ -158,7 +186,103 @@ class _CatEditScreenState extends ConsumerState<CatEditScreen> {
                   Navigator.pop(context);
                 }
               },
-              child: const Text('저장'),
+              child: const Text('저장', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ),
+      ),
+
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 90), // ✅ 하단 버튼 공간
+        children: [
+          // ✅ 사진 영역: 촬영/업로드
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    image: _pickedPhoto != null
+                        ? DecorationImage(
+                      image: FileImage(File(_pickedPhoto!.path)),
+                      fit: BoxFit.cover,
+                    )
+                        : (cat?.photoPath != null && (cat!.photoPath!.trim().isNotEmpty))
+                        ? DecorationImage(
+                      image: FileImage(File(cat.photoPath!)),
+                      fit: BoxFit.cover,
+                    )
+                        : null,
+                  ),
+                  child: (_pickedPhoto == null && (cat?.photoPath == null || cat!.photoPath!.trim().isEmpty))
+                      ? const Icon(Icons.pets, size: 44)
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _pickFromCamera,
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('촬영'),
+                    ),
+                    const SizedBox(width: 10),
+                    OutlinedButton.icon(
+                      onPressed: _pickFromGallery,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('업로드'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          TextField(
+            controller: nameCtrl,
+            decoration: InputDecoration(
+              labelText: '이름 (필수)',
+              border: border,
+              enabledBorder: border,
+              focusedBorder: border,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: sexCtrl,
+            decoration: InputDecoration(
+              labelText: '성별 (선택)',
+              border: border,
+              enabledBorder: border,
+              focusedBorder: border,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: breedCtrl,
+            decoration: InputDecoration(
+              labelText: '묘종 (선택)',
+              border: border,
+              enabledBorder: border,
+              focusedBorder: border,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: traitsCtrl,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(
+              labelText: '특징 (선택)',
+              border: border,
+              enabledBorder: border,
+              focusedBorder: border,
             ),
           ),
         ],

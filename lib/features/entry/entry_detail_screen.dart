@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +26,12 @@ class EntryDetailScreen extends ConsumerWidget {
     }
 
     final df = DateFormat('yyyy.MM.dd (E) HH:mm', 'ko_KR');
+
+    // ✅ 사진 표시용(EntryCreateScreen에서 data['photoPath']에 저장)
+    final photoPath = (entry.data['photoPath'] as String?)?.trim();
+
+    // ✅ 화면에는 photoPath를 "입력값" 카드에 노출하지 않음
+    final dataForView = Map<String, dynamic>.from(entry.data)..remove('photoPath');
 
     return Scaffold(
       appBar: AppBar(
@@ -86,8 +94,29 @@ class EntryDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+
+          // ✅ 사진이 있으면 상세에 표시
+          if (photoPath != null && photoPath.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    File(photoPath),
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          ],
+
           const SizedBox(height: 12),
-          KeyValueCard(title: '입력값', map: entry.data),
+          KeyValueCard(title: '입력값', map: dataForView),
+
           if ((entry.memo ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: 12),
             Card(

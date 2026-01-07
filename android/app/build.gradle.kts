@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "com.example.catnote"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+
+    // ✅ image_picker / flutter_plugin_android_lifecycle 요구 버전
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

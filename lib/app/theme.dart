@@ -6,6 +6,9 @@ ThemeData buildLightTheme({required double fontScale}) {
     colorSchemeSeed: Colors.teal,
   );
   return base.copyWith(
+    appBarTheme: const AppBarTheme(
+      centerTitle: true,
+    ),
     textTheme: base.textTheme.apply(fontSizeFactor: fontScale),
   );
 }
@@ -17,6 +20,9 @@ ThemeData buildDarkTheme({required double fontScale}) {
     colorSchemeSeed: Colors.teal,
   );
   return base.copyWith(
+    appBarTheme: const AppBarTheme(
+      centerTitle: true,
+    ),
     textTheme: base.textTheme.apply(fontSizeFactor: fontScale),
   );
 }

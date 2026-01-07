@@ -22,13 +22,32 @@ class CatsNotifier extends Notifier<List<CatProfile>> {
     }
   }
 
-  void addNew(String name) {
+  void addNew(String name, {String? photoPath, String? traits}) {
     final id = const Uuid().v4();
-    state = [...state, CatProfile(id: id, name: name)];
+    state = [
+      ...state,
+      CatProfile(
+        id: id,
+        name: name,
+        photoPath: photoPath,
+        traits: traits,
+      ),
+    ];
   }
 
   void removeById(String id) {
     state = state.where((c) => c.id != id).toList(growable: false);
+  }
+
+  void reorder(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= state.length) return;
+    if (newIndex < 0 || newIndex >= state.length) return;
+    if (oldIndex == newIndex) return;
+
+    final next = [...state];
+    final item = next.removeAt(oldIndex);
+    next.insert(newIndex, item);
+    state = next;
   }
 }
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum EntryType { food, water, snack, litter, medicine, hospital }
+enum EntryType { food, water, snack, litter, medicine, hospital, weight }
 
 extension EntryTypeX on EntryType {
   String get label {
@@ -17,6 +17,8 @@ extension EntryTypeX on EntryType {
         return '약';
       case EntryType.hospital:
         return '병원';
+      case EntryType.weight:
+        return '체중';
     }
   }
 
@@ -34,6 +36,8 @@ extension EntryTypeX on EntryType {
         return Icons.medication;
       case EntryType.hospital:
         return Icons.local_hospital;
+      case EntryType.weight:
+        return Icons.monitor_weight;
     }
   }
 }
@@ -46,6 +50,7 @@ class Entry {
   final DateTime at;
   final Map<String, dynamic> data;
   final String? memo;
+  final String? photoPath; // ✅ 추가: 사진 경로(촬영/갤러리)
 
   const Entry({
     required this.id,
@@ -54,6 +59,7 @@ class Entry {
     required this.at,
     required this.data,
     this.memo,
+    this.photoPath, // ✅ 추가
   });
 
   Entry copyWith({
@@ -61,6 +67,7 @@ class Entry {
     DateTime? at,
     Map<String, dynamic>? data,
     String? memo,
+    String? photoPath, // ✅ 추가
   }) {
     return Entry(
       id: id,
@@ -69,6 +76,7 @@ class Entry {
       at: at ?? this.at,
       data: data ?? this.data,
       memo: memo ?? this.memo,
+      photoPath: photoPath ?? this.photoPath, // ✅ 추가
     );
   }
 }

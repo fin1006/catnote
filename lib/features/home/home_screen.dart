@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -134,7 +136,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               flexibleSpace: _CatHeroHeader(cat: selectedCat),
             ),
-
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
@@ -149,28 +150,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    QuickActions(
-                      onTap: (type) {
-                        if (selectedCatId == null) return;
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          showDragHandle: true,
-                          builder: (_) => QuickEntrySheet(catId: selectedCatId, type: type),
-                        );
-                      },
-                    ),
+                    // ✅ 팝업(QuickEntrySheet) 대신 입력 화면으로 이동하도록 QuickActions 자체가 라우팅함
+                    if (selectedCatId != null)
+                      QuickActions(catId: selectedCatId)
+                    else
+                      const SizedBox(height: 104),
 
                     const SizedBox(height: 16),
                     const Divider(height: 1),
                     const SizedBox(height: 14),
-
                     TodaySummaryCard(summary: summary),
-
                     const SizedBox(height: 14),
                     const Divider(height: 1),
                     const SizedBox(height: 12),
-
                     TimelineSection(entries: entries),
                   ],
                 ),
@@ -194,7 +186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: _CatThumb(photoUrl: cat.photoUrl, size: 40),
+                leading: _CatThumb(photoUrl: cat.photoUrl, photoPath: cat.photoPath, size: 40),
                 title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text([
                   if ((cat.sex ?? '').isNotEmpty) '성별 ${cat.sex}',
@@ -226,34 +218,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       showDragHandle: true,
       builder: (context) {
-        return ListView(
-          shrinkWrap: true,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 6, 16, 10),
-              child: Text('고양이 선택', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-            for (final c in cats)
-              ListTile(
-                leading: _CatThumb(photoUrl: c.photoUrl, size: 40),
-                title: Text(c.name),
-                trailing: (c.id == selectedCatId) ? const Icon(Icons.check) : null,
-                onTap: () {
-                  ref.read(selectedCatIdProvider.notifier).select(c.id);
-                  Navigator.pop(context);
-                },
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 8, 10),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text('반려묘 선택', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                    IconButton(
+                      tooltip: '설정',
+                      onPressed: () {
+                        Navigator.pop(context);
+                        context.push('/cats/settings');
+                      },
+                      icon: const Icon(Icons.settings),
+                    ),
+                  ],
+                ),
               ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.add),
-              title: const Text('반려묘 추가'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/cats/new');
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final c in cats)
+                      ListTile(
+                        leading: _CatThumb(photoUrl: c.photoUrl, photoPath: c.photoPath, size: 40),
+                        title: Text(c.name),
+                        trailing: (c.id == selectedCatId) ? const Icon(Icons.check) : null,
+                        onTap: () {
+                          ref.read(selectedCatIdProvider.notifier).select(c.id);
+                          Navigator.pop(context);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
         );
       },
     );
@@ -267,15 +273,18 @@ class _CatHeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final photo = (cat?.photoUrl ?? '').trim();
+    final photoUrl = (cat?.photoUrl ?? '').trim();
+    final photoPath = (cat?.photoPath ?? '').trim();
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (_isNetworkUrl(photo))
-            Image.network(photo, fit: BoxFit.cover)
+          if (photoPath.isNotEmpty)
+            Image.file(File(photoPath), fit: BoxFit.cover)
+          else if (_isNetworkUrl(photoUrl))
+            Image.network(photoUrl, fit: BoxFit.cover)
           else
             Container(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -321,7 +330,7 @@ class _HeaderControlsRow extends StatelessWidget {
         InkWell(
           borderRadius: BorderRadius.circular(999),
           onTap: onTapCatInfo,
-          child: _CatThumb(photoUrl: cat?.photoUrl, size: 44),
+          child: _CatThumb(photoUrl: cat?.photoUrl, photoPath: cat?.photoPath, size: 44),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -358,13 +367,15 @@ class _HeaderControlsRow extends StatelessWidget {
 
 class _CatThumb extends StatelessWidget {
   final String? photoUrl;
+  final String? photoPath;
   final double size;
 
-  const _CatThumb({required this.photoUrl, required this.size});
+  const _CatThumb({required this.photoUrl, required this.photoPath, required this.size});
 
   @override
   Widget build(BuildContext context) {
     final url = (photoUrl ?? '').trim();
+    final path = (photoPath ?? '').trim();
     final bg = Theme.of(context).colorScheme.surfaceContainerHighest;
 
     return Container(
@@ -373,11 +384,13 @@ class _CatThumb extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: bg,
-        image: _isNetworkUrl(url)
+        image: path.isNotEmpty
+            ? DecorationImage(image: FileImage(File(path)), fit: BoxFit.cover)
+            : _isNetworkUrl(url)
             ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)
             : null,
       ),
-      child: !_isNetworkUrl(url) ? const Icon(Icons.pets) : null,
+      child: (path.isEmpty && !_isNetworkUrl(url)) ? const Icon(Icons.pets) : null,
     );
   }
 }

@@ -40,7 +40,6 @@ class TimelineSection extends StatelessWidget {
               style: TextStyle(color: hint, fontWeight: FontWeight.w800),
             ),
           ),
-
           for (int i = 0; i < grouped[day]!.length; i++) ...[
             _TimelineRow(
               entry: grouped[day]![i],
@@ -49,7 +48,6 @@ class TimelineSection extends StatelessWidget {
             ),
             const Divider(height: 1),
           ],
-
           const SizedBox(height: 8),
         ],
       ],
@@ -130,6 +128,8 @@ class _TimelineRow extends StatelessWidget {
         final name = e.data['name'] ?? '병원';
         final cost = e.data['cost'] ?? '';
         return '병원 $name ${cost.toString().isEmpty ? '' : '· $cost'}';
+      case EntryType.weight:
+        return '체중 ${(e.data['weight_kg'] ?? '-')}kg';
     }
   }
 }
